@@ -6,6 +6,15 @@
 
 ### Решение Задание 1
 
+```sql
+SELECT
+    (SUM(index_length) / SUM(data_length)) * 100 AS index_to_table_ratio
+FROM
+    information_schema.tables
+WHERE
+    table_schema = 'sakila';
+```
+
 ### Задание 2
 
 Выполните explain analyze следующего запроса:
