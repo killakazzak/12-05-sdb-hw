@@ -31,6 +31,36 @@ where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and
 
 ### Решение Задание 2
 
+Выполнение EXPAIN ANALYZE
+
+```sql
+EXPLAIN analyze
+select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount) over (partition by c.customer_id, f.title)
+from payment p, rental r, customer c, inventory i, film f
+where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and r.customer_id = c.customer_id and i.inventory_id = r.inventory_id
+```
+
+OUTPUT:
+```
+-> Table scan on <temporary>  (cost=2.5..2.5 rows=0) (actual time=3264..3264 rows=391 loops=1)
+    -> Temporary table with deduplication  (cost=0..0 rows=0) (actual time=3264..3264 rows=391 loops=1)
+        -> Window aggregate with buffering: sum(payment.amount) OVER (PARTITION BY c.customer_id,f.title )   (actual time=1797..3134 rows=642000 loops=1)
+            -> Sort: c.customer_id, f.title  (actual time=1797..1835 rows=642000 loops=1)
+                -> Stream results  (cost=21.7e+6 rows=16e+6) (actual time=0.287..1434 rows=642000 loops=1)
+                    -> Nested loop inner join  (cost=21.7e+6 rows=16e+6) (actual time=0.284..1275 rows=642000 loops=1)
+                        -> Nested loop inner join  (cost=20.1e+6 rows=16e+6) (actual time=0.28..1153 rows=642000 loops=1)
+                            -> Nested loop inner join  (cost=18.5e+6 rows=16e+6) (actual time=0.275..1025 rows=642000 loops=1)
+                                -> Inner hash join (no condition)  (cost=1.58e+6 rows=15.8e+6) (actual time=0.266..32.9 rows=634000 loops=1)
+                                    -> Filter: (cast(p.payment_date as date) = '2005-07-30')  (cost=1.65 rows=15813) (actual time=0.022..3.79 rows=634 loops=1)
+                                        -> Table scan on p  (cost=1.65 rows=15813) (actual time=0.0142..2.79 rows=16044 loops=1)
+                                    -> Hash
+                                        -> Covering index scan on f using idx_title  (cost=103 rows=1000) (actual time=0.0263..0.17 rows=1000 loops=1)
+                                -> Covering index lookup on r using rental_date (rental_date=p.payment_date)  (cost=0.969 rows=1.01) (actual time=0.00108..0.00146 rows=1.01 loops=634000)
+                            -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=250e-6 rows=1) (actual time=109e-6..122e-6 rows=1 loops=642000)
+                        -> Single-row covering index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=250e-6 rows=1) (actual time=94.9e-6..108e-6 rows=1 loops=642000)
+
+```
+
 ```text
 Анализируя выполнение запроса, можно выделить следующие узкие места:
 
