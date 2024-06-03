@@ -107,6 +107,17 @@ WHERE DATE(p.payment_date) = '2005-07-30'
 GROUP BY full_name;
 ```
 
+CREATE INDEX idx_film_id ON film(film_id);
+
+SELECT CONCAT(c.last_name, ' ', c.first_name) AS full_name, SUM(p.amount) AS total_amount
+FROM payment p
+JOIN rental r ON p.rental_id = r.rental_id
+JOIN customer c ON r.customer_id = c.customer_id
+JOIN inventory i ON i.inventory_id = r.inventory_id
+JOIN film f ON i.film_id = f.film_id
+WHERE DATE (p.payment_date) >= '2005-07-30' and p.payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
+GROUP BY full_name;
+
 
 ## Дополнительные задания (со звёздочкой*)
 Эти задания дополнительные, то есть не обязательные к выполнению, и никак не повлияют на получение вами зачёта по этому домашнему заданию. Вы можете их выполнить, если хотите глубже шире разобраться в материале.
