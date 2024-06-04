@@ -89,26 +89,26 @@ OUTPUT:
 Для оптимальной производительности добавляем следующие индексы:
 
 ```sql
-CREATE INDEX idx_payment_date ON payment(payment_date);
-CREATE INDEX idx_rental_date ON rental(rental_date);
-CREATE INDEX idx_customer_id ON customer(customer_id);
-CREATE INDEX idx_inventory_id ON inventory(inventory_id);
 CREATE INDEX idx_film_id ON film(film_id);
 ```
 Исправленный запрос с добавленными индексами:
+
 ```sql
-SELECT CONCAT(c.last_name, ' ', c.first_name) AS full_name, SUM(p.amount) AS total_amount
+EXPLAIN
+SELECT DISTINCT CONCAT(c.last_name, ' ', c.first_name) AS full_name, SUM(p.amount) AS total_amount
 FROM payment p
 JOIN rental r ON p.rental_id = r.rental_id
 JOIN customer c ON r.customer_id = c.customer_id
 JOIN inventory i ON i.inventory_id = r.inventory_id
-JOIN film f ON i.film_id = f.film_id
-WHERE DATE(p.payment_date) = '2005-07-30'
+JOIN film f USE INDEX (idx_film_id) ON i.film_id = f.film_id
+WHERE DATE(p.payment_date) >= '2005-07-30' AND p.payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
 GROUP BY full_name;
 ```
-```sql
-CREATE INDEX idx_film_id ON film(film_id);
 
+![image](https://github.com/killakazzak/12-05-sdb-hw/assets/32342205/bce237ff-aeb7-41d7-a346-9e6a75c13aa1)
+
+
+```sql
 EXPLAIN ANALYZE 
 SELECT DISTINCT CONCAT(c.last_name, ' ', c.first_name) AS full_name, SUM(p.amount) AS total_amount
 FROM payment p
@@ -119,6 +119,22 @@ JOIN film f USE INDEX (idx_film_id) ON i.film_id = f.film_id
 WHERE DATE(p.payment_date) >= '2005-07-30' AND p.payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
 GROUP BY full_name;
 ```
+Вывод
+```
+-> Table scan on <temporary>  (actual time=7.96..7.99 rows=391 loops=1)
+    -> Aggregate using temporary table  (actual time=7.96..7.96 rows=391 loops=1)
+        -> Nested loop inner join  (cost=8984 rows=5270) (actual time=0.0644..7.5 rows=634 loops=1)
+            -> Nested loop inner join  (cost=7140 rows=5270) (actual time=0.0584..6.85 rows=634 loops=1)
+                -> Nested loop inner join  (cost=5295 rows=5270) (actual time=0.0534..5.91 rows=634 loops=1)
+                    -> Nested loop inner join  (cost=3450 rows=5270) (actual time=0.0484..5.33 rows=634 loops=1)
+                        -> Filter: ((cast(p.payment_date as date) >= '2005-07-30') and (p.payment_date < <cache>(('2005-07-30' + interval 1 day))) and (p.rental_id is not null))  (cost=1606 rows=5270) (actual time=0.0377..4.33 rows=634 loops=1)
+                            -> Table scan on p  (cost=1606 rows=15813) (actual time=0.0287..3.16 rows=16044 loops=1)
+                        -> Single-row index lookup on r using PRIMARY (rental_id=p.rental_id)  (cost=0.25 rows=1) (actual time=0.00147..0.00148 rows=1 loops=634)
+                    -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=0.25 rows=1) (actual time=800e-6..812e-6 rows=1 loops=634)
+                -> Single-row index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=0.25 rows=1) (actual time=0.00138..0.0014 rows=1 loops=634)
+            -> Single-row covering index lookup on f using idx_film_id (film_id=i.film_id)  (cost=0.25 rows=1) (actual time=904e-6..920e-6 rows=1 loops=634)
+```
+
 
 
 ## Дополнительные задания (со звёздочкой*)
