@@ -86,10 +86,10 @@ OUTPUT:
 ```
 
 
-Для оптимальной производительности добавляем следующие индексы:
+Для оптимальной производительности добавляем следующие индекс:
 
 ```sql
-CREATE INDEX idx_film_id ON film(film_id);
+CREATE INDEX idx_payment_date ON payment(payment_date);
 ```
 Исправленный запрос с добавленными индексами:
 
@@ -100,12 +100,12 @@ FROM payment p
 JOIN rental r ON p.rental_id = r.rental_id
 JOIN customer c ON r.customer_id = c.customer_id
 JOIN inventory i ON i.inventory_id = r.inventory_id
-JOIN film f USE INDEX (idx_film_id) ON i.film_id = f.film_id
-WHERE DATE(p.payment_date) >= '2005-07-30' AND p.payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
+JOIN film f  ON i.film_id = f.film_id
+WHERE (p.payment_date) >= '2005-07-30' AND p.payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
 GROUP BY full_name;
 ```
 
-![image](https://github.com/killakazzak/12-05-sdb-hw/assets/32342205/bce237ff-aeb7-41d7-a346-9e6a75c13aa1)
+![image](https://github.com/killakazzak/12-05-sdb-hw/assets/32342205/711441d3-496b-42ab-a20a-01f47a24384d)
 
 
 ```sql
@@ -115,24 +115,26 @@ FROM payment p
 JOIN rental r ON p.rental_id = r.rental_id
 JOIN customer c ON r.customer_id = c.customer_id
 JOIN inventory i ON i.inventory_id = r.inventory_id
-JOIN film f USE INDEX (idx_film_id) ON i.film_id = f.film_id
-WHERE DATE(p.payment_date) >= '2005-07-30' AND p.payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
+JOIN film f  ON i.film_id = f.film_id
+WHERE (p.payment_date) >= '2005-07-30' AND p.payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
 GROUP BY full_name;
 ```
 Вывод
 ```
--> Table scan on <temporary>  (actual time=7.96..7.99 rows=391 loops=1)
-    -> Aggregate using temporary table  (actual time=7.96..7.96 rows=391 loops=1)
-        -> Nested loop inner join  (cost=8984 rows=5270) (actual time=0.0644..7.5 rows=634 loops=1)
-            -> Nested loop inner join  (cost=7140 rows=5270) (actual time=0.0584..6.85 rows=634 loops=1)
-                -> Nested loop inner join  (cost=5295 rows=5270) (actual time=0.0534..5.91 rows=634 loops=1)
-                    -> Nested loop inner join  (cost=3450 rows=5270) (actual time=0.0484..5.33 rows=634 loops=1)
-                        -> Filter: ((cast(p.payment_date as date) >= '2005-07-30') and (p.payment_date < <cache>(('2005-07-30' + interval 1 day))) and (p.rental_id is not null))  (cost=1606 rows=5270) (actual time=0.0377..4.33 rows=634 loops=1)
-                            -> Table scan on p  (cost=1606 rows=15813) (actual time=0.0287..3.16 rows=16044 loops=1)
-                        -> Single-row index lookup on r using PRIMARY (rental_id=p.rental_id)  (cost=0.25 rows=1) (actual time=0.00147..0.00148 rows=1 loops=634)
-                    -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=0.25 rows=1) (actual time=800e-6..812e-6 rows=1 loops=634)
-                -> Single-row index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=0.25 rows=1) (actual time=0.00138..0.0014 rows=1 loops=634)
-            -> Single-row covering index lookup on f using idx_film_id (film_id=i.film_id)  (cost=0.25 rows=1) (actual time=904e-6..920e-6 rows=1 loops=634)
+-> Limit: 200 row(s)  (actual time=5.3..5.34 rows=200 loops=1)
+    -> Table scan on <temporary>  (actual time=5.29..5.32 rows=200 loops=1)
+        -> Aggregate using temporary table  (actual time=5.29..5.29 rows=391 loops=1)
+            -> Nested loop inner join  (cost=1173 rows=634) (actual time=0.0664..4.61 rows=634 loops=1)
+                -> Nested loop inner join  (cost=951 rows=634) (actual time=0.0597..3.79 rows=634 loops=1)
+                    -> Nested loop inner join  (cost=729 rows=634) (actual time=0.0492..2.98 rows=634 loops=1)
+                        -> Nested loop inner join  (cost=507 rows=634) (actual time=0.0395..2.1 rows=634 loops=1)
+                            -> Filter: (p.rental_id is not null)  (cost=286 rows=634) (actual time=0.0274..1.23 rows=634 loops=1)
+                                -> Index range scan on p using idx_payment_date over ('2005-07-30 00:00:00' <= payment_date < '2005-07-31 00:00:00'), with index condition: ((p.payment_date >= TIMESTAMP'2005-07-30 00:00:00') and (p.payment_date < <cache>(('2005-07-30' + interval 1 day))))  (cost=286 rows=634) (actual time=0.0265..1.18 rows=634 loops=1)
+                            -> Single-row index lookup on r using PRIMARY (rental_id=p.rental_id)  (cost=0.25 rows=1) (actual time=0.00118..0.0012 rows=1 loops=634)
+                        -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=0.25 rows=1) (actual time=0.00122..0.00124 rows=1 loops=634)
+                    -> Single-row index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=0.25 rows=1) (actual time=0.0011..0.00112 rows=1 loops=634)
+                -> Single-row covering index lookup on f using PRIMARY (film_id=i.film_id)  (cost=0.25 rows=1) (actual time=0.0011..0.00113 rows=1 loops=634)
+
 ```
 
 
